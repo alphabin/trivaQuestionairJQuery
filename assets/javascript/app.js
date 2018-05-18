@@ -13,7 +13,13 @@ $(document).ready(function () {
     var questionBoard = {
 
         questions: [],
+
         index: 0,
+
+        correct:0,
+
+        notCorrect:0,
+
         createQuestionsBlank: function () {
             var temp = [];
             for (var i = 0; i < 10; i++) {
@@ -73,6 +79,10 @@ $(document).ready(function () {
             var submit = $("<input id=\"submit\">");
             submit.attr("type", "submit")
             form.append(submit);
+            var emptyDiv = $("<div>");
+            var img = $("<img id=\"imageResolved\">")
+            emptyDiv.append(img);
+            form.append(emptyDiv);
             $("#gameBoard").html(form);
             return form;
         },
@@ -93,9 +103,7 @@ $(document).ready(function () {
             var result = "";
             questionBoard.questions.forEach(function (questionIN) {
                 if (questionIN.question === question) {
-
                     result = questionIN.url;
-
                 }
             });
             return result;
@@ -107,40 +115,133 @@ $(document).ready(function () {
             }
             questionBoard.createQuestionHtml(this.questions[questionBoard.index]);
             questionBoard.index++;
+        },
+
+        credits: function()
+        {
+            var topDiv = $("<div>");
+            var correct = $("<h2 class=\"result\"> Correct : "+this.correct+"</h2>");
+            var notCorrect = $("<h2 class=\"result\"> Wrong : "+this.notCorrect+"</h2>");
+
+            topDiv.append(correct);
+            topDiv.append(notCorrect);
+
+            $("#gameBoard").html(topDiv);
+            $("#buttonNext").text("reload");       
         }
     }
     questionBoard.createQuestionsBlank();
     questionBoard.populateQuestions();
 
+    var QuestionsAnswered = 0;
+    var canPick = false;
+    var theEnd = false;
+
+
+    //Timer Helper Stuff
+    function startInterval() {
+        if (canPick == false) {
+            $("#buttonNext").click(function (event) {
+                event.preventDefault();
+                questionBoard.nextQs();
+                run();
+                canPick = true;
+               
+                if($("#buttonNext").text() == "reload")
+                     location.reload();
+                if(questionBoard.correct == 4 || questionBoard.notCorrect == 4 || (questionBoard.correct+questionBoard.notCorrect) >= 4 )
+                {
+                    $("#show-number").empty();
+                    questionBoard.credits();
+                    theEnd = true;
+                    stop();
+                    
+                }
+               
+                return callback();
+            });
+            
+        }
+
+        function callback() {
+            if( theEnd == false)
+            $("#questionsBlock").submit(function (event) {
+                event.preventDefault();
+                var question = $("#question").html();
+                var answer = $("input:checked").val()
+                console.log("Input Recieved : " + question + " answer: " + answer);
+                var correctNess = questionBoard.validateAnswer(question, answer);
+                if (canPick) 
+                {
+                    if (correctNess == true) 
+                    {
+                        var imageGif = $("#imageResolved");
+                        imageGif.attr("src", questionBoard.findQsURL(question));
+                        stop();
+                        number = 21;
+                        questionBoard.correct++;
+                        canPick = false;
+
+                    }
+                    else {
+                        var imageGif = $("#imageResolved");
+                        imageGif.attr("src", "./assets/images/wrong.gif");
+                        canPick = false;
+                        stop();
+                        questionBoard.notCorrect++;
+                        number = 21;
+                    }
+                }
+            });
+        }
+    }
+    //  Interval Demonstration
+    //  Set our number counter to 100.
+    var number = 21;
+    //  Variable that will hold our interval ID when we execute
+    //  the "run" function
     var intervalId;
 
-    
+    var isRunning = false;
 
-    $("#buttonNext").click(function (event) {
-        event.preventDefault();
-        questionBoard.nextQs();
-        return callback();
-    });
+    startInterval();
 
-    //What the hell is going on
-    function callback() {
-        $("#questionsBlock").submit(function (event) {
-            event.preventDefault();
-            var question = $("#question").html();
-            var answer = $("input:checked").val()
-            console.log("Input Recieved : " + question + " answer: " + answer);
-            var correctNess = questionBoard.validateAnswer(question, answer);
-            if (correctNess == true) {
-                var imageGif = $("<img style=\"text-align:center;\">");
-                imageGif.attr("src", questionBoard.findQsURL(question));
-                $("#gameBoard").append(imageGif);
 
-            }
-        });
+    function run() {
+        if (!isRunning) {
+            isRunning = true;
+            intervalId = setInterval(decrement, 1000);
+        }
     }
+    //  The decrement function.
+    function decrement() {
 
-    //$(document).on("submit", "#questionsBlock", callback);
+        //  Decrease number by one.
+        number--;
 
+        //  Show the number in the #show-number tag.
+        $("#show-number").html("<h2 style=\"text-align:center;\"> Time Left For the Quiz ::" + number + "</h2>");
 
+        //  Once number hits zero...
+        if (number === 0) {
+
+            //  ...run the stop function.
+            stop();
+
+            questionBoard.credits();
+
+            //  Alert the user that time is up.
+            alert("Time Up!");
+        }
+    }
+    //  The stop function
+    function stop() {
+        isRunning = false;
+        //  Clears our intervalId
+        //  We just pass the name of the interval
+        //  to the clearInterval function.
+        clearInterval(intervalId);
+
+    }
 
 });
